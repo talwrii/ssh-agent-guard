@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ssh-agent-guard"
+version = "0.1.0"
+description = "Proxy in front of a captive ssh-agent that only accepts keys added with confirm (ssh-add -c). Starlark code with Python shims for bootloading and I/O."
+requires-python = ">=3.10"
+dependencies = ["starlark-pyo3==2026.1.3"]
+
+[project.scripts]
+ssh-agent-guard = "ssh_agent_guard.boot:main"
+
+[tool.setuptools]
+packages = ["ssh_agent_guard"]
+
+[tool.setuptools.package-data]
+ssh_agent_guard = ["*.star"]
