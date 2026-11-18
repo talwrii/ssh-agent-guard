@@ -4,8 +4,11 @@ A proxy in front of a captive `ssh-agent` that refuses any key added without
 the confirm constraint (`ssh-add -c`). The agent then asks before every use
 of every key.
 
-Starlark code (`guard.star`) with Python shims for bootloading (`boot.py`)
-and I/O (`io_shims.py`).
+We use an innovative to me security approach where most code is in pure
+(side effect free) starlack code (`guard.star`) with Python shims for bootloading (`boot.py`)
+and I/O. This acts as a sandbox without having to bother with system calls etc.
+
+AI-generted and not very well reviewed. Security theatre / security practice.
 
 ## Caveats
 
