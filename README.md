@@ -37,9 +37,60 @@ export SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent-guard/agent.sock
 ssh-add -c ~/.ssh/id_ed25519
 ```
 
-`ssh-agent-guard --help` for options. The agent needs `ssh-askpass` and a
-display to ask you. Decisions are logged to
+`ssh-agent-guard --help` for options. Decisions are logged to
 `~/.local/state/ssh-agent-guard/log.jsonl`.
+
+## Variables
+
+| Variable | Read by | Notes |
+|---|---|---|
+| `XDG_RUNTIME_DIR` | the guard | Where its directory goes. Required: there is deliberately no `/tmp` fallback. Set by your login session. |
+| `SSH_AUTH_SOCK` | `ssh-add`, `ssh`, git commit signing, `ssh-keygen -Y`, anything else using the agent | Point it at `agent.sock`. This is the one that matters: `ssh-add` reads only this, never `~/.ssh/config`. |
+| `DISPLAY`, `SSH_ASKPASS` | the captive `ssh-agent` | How the agent asks you before each use. It inherits them from the guard, so the guard must be started with them set. Needs `ssh-askpass` installed. Without a display, every use is refused. |
+| `SSH_CONNECTION` | your shell rc (see below) | Set inside ssh sessions; use it to leave a forwarded agent alone. |
+
+## Setting it up for a session
+
+**Point everything at the guard.** In a shell rc file that your X session
+also reads:
+
+```sh
+# Skipped in ssh sessions so a forwarded agent is kept.
+if [ -z "$SSH_CONNECTION" ] && [ -n "$XDG_RUNTIME_DIR" ]; then
+    export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent-guard/agent.sock"
+fi
+```
+
+On Debian/Ubuntu, `/etc/X11/Xsession` starts its own `ssh-agent` only if
+`SSH_AUTH_SOCK` is empty, so setting it from `~/.xsessionrc` both points the
+session at the guard and stops that agent. Two traps there: Xsession sources
+`~/.xsessionrc` with `/bin/sh` (dash, so no `function` keyword), and with
+`set -e`, so any failing line stops your session starting. Wrap it:
+
+```sh
+# ~/.xsessionrc
+set +e
+. "$HOME/path/to/your/shellrc"
+set -e
+```
+
+**Belt and braces for ssh itself.** At the *end* of `~/.ssh/config`:
+
+```
+Host *
+    IdentityAgent ${XDG_RUNTIME_DIR}/ssh-agent-guard/agent.sock
+    AddKeysToAgent confirm
+```
+
+The first value found for each option wins, so at the end this is only a
+default: host blocks above it that set their own `IdentityAgent` keep it
+(and bypass the guard for that host). It does not affect `ssh-add`.
+
+**Start the guard at login**, before you need ssh. If it isn't running,
+`SSH_AUTH_SOCK` points at nothing: ssh falls back to reading key files and
+asking for the passphrase, and `ssh-add` fails. If you start it as a systemd
+user service, the user manager needs your display:
+`systemctl --user import-environment DISPLAY XAUTHORITY`.
 
 ## Layout
 
